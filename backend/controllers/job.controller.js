@@ -100,3 +100,99 @@ export const getAdminJobs = async (req, res) => {
         console.log(error);
     }
 }
+
+export const searchJobs = async (req, res) => {
+    try {
+        const {
+            query,
+            location,
+            jobType,
+            experience,
+            minSalary,
+            maxSalary,
+            skills,
+            page = 1,
+            limit = 10
+        } = req.query;
+
+        const searchQuery = {};
+
+        // Text search across title and description
+        if (query) {
+            searchQuery.$or = [
+                { title: { $regex: query, $options: 'i' } },
+                { description: { $regex: query, $options: 'i' } }
+            ];
+        }
+
+        // Location filter
+        if (location) {
+            searchQuery.location = { $regex: location, $options: 'i' };
+        }
+
+        // Experience level filter
+        if (experience) {
+            searchQuery.experienceLevel = experience;
+        }
+
+        // Job type filter
+        if (jobType) {
+            searchQuery.jobType = jobType;
+        }
+
+        // Salary range filter
+        if (minSalary || maxSalary) {
+            searchQuery.salary = {};
+            if (minSalary) searchQuery.salary.$gte = Number(minSalary);
+            if (maxSalary) searchQuery.salary.$lte = Number(maxSalary);
+        }
+
+        // Skills filter
+        if (skills) {
+            const skillsArray = skills.split(',').map(skill => skill.trim());
+            if (skillsArray.length > 0) {
+                searchQuery.requirements = {
+                    $in: skillsArray.map(skill => new RegExp(skill, 'i'))
+                };
+            }
+        }
+
+        // Pagination
+        const skip = (page - 1) * limit;
+
+        // First get the populated jobs
+        const jobs = await Job.find(searchQuery)
+            .populate('company')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit));
+
+        // Then filter by company name if query exists
+        const filteredJobs = query
+            ? jobs.filter(job => 
+                job.company && 
+                job.company.name && 
+                job.company.name.toLowerCase().includes(query.toLowerCase())
+              )
+            : jobs;
+
+        // Get total count for pagination
+        const total = await Job.countDocuments(searchQuery);
+
+        return res.status(200).json({
+            success: true,
+            jobs: filteredJobs,
+            page: Number(page),
+            totalPages: Math.ceil(total / limit),
+            total
+        });
+
+    } catch (error) {
+        console.error('Search error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error searching jobs',
+            error: error.message
+        });
+    }
+};

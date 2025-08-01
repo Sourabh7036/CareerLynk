@@ -1,5 +1,8 @@
-import React from 'react'
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
+import React, { useState } from 'react';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Button } from '../ui/button';
+import { Eye } from 'lucide-react';
+import ResumeViewer from '../ResumeViewer';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { MoreHorizontal } from 'lucide-react';
 import { useSelector } from 'react-redux';
@@ -11,6 +14,8 @@ const shortlistingStatus = ["Accepted", "Rejected"];
 
 const ApplicantsTable = () => {
     const { applicants } = useSelector(store => store.application);
+    const [selectedResume, setSelectedResume] = useState(null);
+    const [viewResumeOpen, setViewResumeOpen] = useState(false);
 
     const statusHandler = async (status, id) => {
         console.log('called');
@@ -25,6 +30,11 @@ const ApplicantsTable = () => {
             toast.error(error.response.data.message);
         }
     }
+
+    const handleViewResume = (resume, fileName) => {
+        setSelectedResume({ url: resume, fileName });
+        setViewResumeOpen(true);
+    };
 
     return (
         <div>
@@ -43,17 +53,30 @@ const ApplicantsTable = () => {
                 <TableBody>
                     {
                         applicants && applicants?.applications?.map((item) => (
-                            <tr key={item._id}>
+                            <TableRow key={item._id}>
                                 <TableCell>{item?.applicant?.fullname}</TableCell>
                                 <TableCell>{item?.applicant?.email}</TableCell>
                                 <TableCell>{item?.applicant?.phoneNumber}</TableCell>
-                                <TableCell >
+                                <TableCell>
                                     {
-                                        item.applicant?.profile?.resume ? <a className="text-blue-600 cursor-pointer" href={item?.applicant?.profile?.resume} target="_blank" rel="noopener noreferrer">{item?.applicant?.profile?.resumeOriginalName}</a> : <span>NA</span>
+                                        item.applicant?.profile?.resume ? (
+                                            <Button
+                                                variant="ghost"
+                                                className="text-blue-500 hover:text-blue-700 p-0"
+                                                onClick={() => handleViewResume(
+                                                    item.applicant.profile.resume,
+                                                    item.applicant.profile.resumeOriginalName
+                                                )}
+                                            >
+                                                {item.applicant.profile.resumeOriginalName}
+                                            </Button>
+                                        ) : (
+                                            <span>NA</span>
+                                        )
                                     }
                                 </TableCell>
                                 <TableCell>{item?.applicant.createdAt.split("T")[0]}</TableCell>
-                                <TableCell className="float-right cursor-pointer">
+                                <TableCell className="text-right">
                                     <Popover>
                                         <PopoverTrigger>
                                             <MoreHorizontal />
@@ -70,18 +93,22 @@ const ApplicantsTable = () => {
                                             }
                                         </PopoverContent>
                                     </Popover>
-
                                 </TableCell>
-
-                            </tr>
+                            </TableRow>
                         ))
                     }
-
                 </TableBody>
-
             </Table>
+            {selectedResume && (
+                <ResumeViewer
+                    isOpen={viewResumeOpen}
+                    setIsOpen={setViewResumeOpen}
+                    resumeUrl={selectedResume.url}
+                    fileName={selectedResume.fileName}
+                />
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default ApplicantsTable
+export default ApplicantsTable;

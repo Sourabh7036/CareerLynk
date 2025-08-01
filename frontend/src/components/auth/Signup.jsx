@@ -41,7 +41,7 @@ const Signup = () => {
         formData.append("password", input.password);
         formData.append("role", input.role);
         if (input.file) {
-            formData.append("file", input.file);
+            formData.append("profilePhoto", input.file);
         }
 
         try {
@@ -56,7 +56,8 @@ const Signup = () => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.response.data.message);
+            const errorMessage = error.response?.data?.message || "Registration failed. Please try again.";
+            toast.error(errorMessage);
         } finally{
             dispatch(setLoading(false));
         }
